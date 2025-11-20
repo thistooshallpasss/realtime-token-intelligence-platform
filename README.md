@@ -1,44 +1,181 @@
-# Real-Time Token Intelligence Platform (Axiom Pulse Clone)
 
-> A Master-Level Capstone Project implementing a high-performance, real-time crypto trading interface with atomic architecture, sub-millisecond updates, and virtualization for large datasets.
+# 📘 **Real-Time Token Intelligence Dashboard (Axiom Pulse Clone)**
 
-![Project Demo](public/demo-screenshot.png) ## 🚀 Live Demo
-- **Deployment:** [Vercel Link](https://realtime-token-intelligence-platfor.vercel.app/)
-- **Video Demo:** [YouTube Link Here]
+# **Real-Time Token Intelligence Platform**
 
-## 🛠 Technical Stack
-- **Core:** Next.js 16 (App Router), TypeScript (Strict Mode)
-- **Styling:** Tailwind CSS, ShadCN/UI (Radix Primitives)
-- **State Management:** Redux Toolkit (Global UI State), React Query (Server State/Caching)
-- **Performance:** TanStack Virtual (Virtualization), Recharts (Visualization)
-- **Testing:** Storybook, Chromatic (Visual Regression)
+### *(Axiom Pulse Clone — Frontend-Only Master Project)*
 
-## ✨ Key Features
-1. **Real-Time WebSocket Emulation:** Prices stream via a custom hook with <100ms latency updates.
-2. **Visual Data Intelligence:**
-   - **Sparklines:** 7-day price trend visualization.
-   - **Flash Updates:** Smooth color transitions (Green/Red) on price tick.
-   - **Status Indicators:** Tooltips and colored badges for token lifecycle status.
-3. **Advanced Performance:**
-   - **Virtualization:** Handles 500+ rows with zero layout shift using `useVirtualizer`.
-   - **Optimization:** 97/100 Mobile Lighthouse Performance Score.
-4. **Interactive UI:**
-   - **Filtering:** Category tabs (New Pairs, Final Stretch, Migrated).
-   - **Sorting:** Multi-column sorting via Redux.
-   - **Drill-down:** Detailed modal view on row click.
+A high-performance, fully responsive **token discovery & trading insights dashboard**, inspired by **Axiom Pulse**.
+This project focuses entirely on **frontend engineering**, real-time UI behavior, virtualization, and pixel-perfect design—built using **Next.js**, **React Query**, **Redux Toolkit**, **TailwindCSS**, and **Recharts**.
 
-## 🏗 Architecture
-This project follows **Atomic Design** principles:
-- **Atoms:** `Sparkline`, `PriceChangeIndicator`
-- **Molecules:** `TokenRow`, `CategoryTabs`, `StatusBadge`
-- **Organisms:** `TokenTradingTable`, `TokenDetailModal`
-- **Templates:** `Providers`
+---
 
-## 🧪 Testing & QA
-Visual regression testing is implemented using **Storybook** and **Chromatic**.
+## 🚀 **Features Overview**
+
+### ⚡ **Real-Time UI**
+
+* Live price updates (200ms mock WebSocket stream)
+* Smooth **green/red flash animations** on price change
+* Optimized React Query caching
+* No lag due to **memoized components**
+
+### 📊 **Trading Table UI**
+
+* Pixel-perfect table layout inspired by Axiom Pulse
+* Category filters: **New Pairs, Final Stretch, Migrated, All**
+* Sorting on: **Price, 24h %, Liquidity, Volume**
+* Virtualized list for 500+ tokens (TanStack Virtual)
+* Sparkline charts (Recharts)
+* Sticky table header
+
+### 🎛 **Interactive UX**
+
+* Token hover popover showing quick stats
+* Tooltip on status badge
+* Token detail modal with extended info
+* Beautiful hover effects
+* Fully responsive (320px → desktop)
+
+### 🧱 **Engineering Excellence**
+
+* Atomic design structure: `atoms → molecules → organisms → templates`
+* Strict TypeScript
+* Redux Toolkit for UI state
+* React Query for async & caching
+* TailwindCSS with tailwind-merge
+* Clean folder structure
+* Storybook-ready components
+
+---
+
+## 📁 **Project Structure**
+
+```
+/src
+  /components
+    /atoms
+    /molecules
+    /organisms
+    /templates
+    /ui
+  /lib
+    /hooks
+    /utils
+    /constants
+  /store
+  /types
+  /services
+  /app
+/docs
+/backend (optional – not required)
+```
+
+---
+
+## 🛠 **Tech Stack**
+
+| Category         | Technology              |
+| ---------------- | ----------------------- |
+| Framework        | Next.js 14 (App Router) |
+| Language         | TypeScript              |
+| Styling          | TailwindCSS             |
+| Data Layer       | React Query             |
+| State Management | Redux Toolkit           |
+| Virtualization   | TanStack Virtual        |
+| Charts           | Recharts                |
+| Icons            | Lucide React            |
+| Utilities        | tailwind-merge, clsx    |
+
+---
+
+## 📦 **Installation**
+
 ```bash
-# Run Storybook locally
-npm run storybook
+npm install
+npm run dev
+```
 
-# Run Visual Regression Test (Requires Token)
-npm run chromatic
+Runs locally at
+👉 `http://localhost:3000`
+
+---
+
+## 📸 **Screenshots (Add these images in README)**
+
+
+
+### 1. **Main Dashboard (Desktop View)**
+![Main Dashboard Screenshot](./docs/screenshots/Main_Dashboard.png)
+
+### 2. **Hover Popover**
+![Popover Screenshot](./docs/screenshots/Hover_Popover.png)
+
+### 3. **Status Tooltip**
+![Tooltip Screenshot](./docs/screenshots/Status_Tooltip_3.png)
+
+### 4. **Sorting Interaction**
+![Sorting Screenshot (Positive Sort)](./docs/screenshots/Sorting_Interaction_positive.png)
+![Sorting Screenshot (Negative Sort)](./docs/screenshots/Sorting_Interaction_negative.png)
+
+### 5. **Token Detail Modal**
+![Modal Screenshot](./docs/screenshots/Token_Detail_Modal_1.png)
+
+### 6. **Real-Time Flash Animation**
+![Flash Animation Screenshot (Use Video or GIF for best demo)](./docs/screenshots/Real_Time_Flash_Animation.png)
+
+### 7. **Mobile View (320px)**
+![Mobile Screenshot 1](./docs/screenshots/MobileView_1.jpeg)
+![Mobile Screenshot 2](./docs/screenshots/MobileView_2.jpeg)
+
+### 8. **Lighthouse Scores (Desktop + Mobile)**
+![Lighthouse Screenshot 1 (Performance)](./docs/screenshots/Lighthouse_Scores_1.png)
+![Lighthouse Screenshot 2 (Accessibility)](./docs/screenshots/Lighthouse_Scores_2.png)
+---
+## 📹 **Demo Video (YouTube)**
+
+> *(Add your 1–2 minute overview video here)*
+
+🎥 **YouTube Link:** [Check Youtube video for demonstration here!!!](https://youtu.be/iiJ0IfCqFyc)
+
+---
+
+## 🌐 **Live Deployment**
+
+> *(Replace with your Vercel URL)*
+> 🔗 **Live Demo:** [Check Out Here!!!](https://realtime-token-intelligence-platfor.vercel.app/)
+
+---
+
+## 📚 **Architecture Notes**
+
+* Real-time updates handled via mock WebSocket generator.
+* Heavy UI rendering optimized using virtualization and memoization.
+* Table reflows eliminated with fixed column widths.
+* Sparkline charts rendered with minimal cost via Recharts tiny charts.
+* State split cleanly between:
+
+  * **React Query → data**
+  * **Redux Toolkit → UI**
+
+---
+
+## 🧪 **Storybook (Optional)**
+
+```bash
+npm run storybook
+```
+
+---
+
+## 🏆 **Author**
+
+**thistooshallpass**
+Frontend Engineer • Real-Time UI Specialist
+
+---
+
+## 📄 License
+
+MIT License
+
+---
