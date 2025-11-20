@@ -12,19 +12,22 @@ export const TokenHoverPopover: React.FC<TokenHoverPopoverProps> = ({ token, chi
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div
-            className="relative inline-block"
-            onMouseEnter={() => setIsOpen(true)}
-            onMouseLeave={() => setIsOpen(false)}
-        >
-            {children}
+        <div className="relative inline-block">
+            {/* 💡 FIX #10: Trigger hover only on the visible children */}
+            <div
+                onMouseEnter={() => setIsOpen(true)}
+                onMouseLeave={() => setIsOpen(false)}
+            >
+                {children}
+            </div>
 
             {/* Popover Content */}
             {isOpen && (
                 <div
                     className={cn(
-                        "absolute left-full top-1/2 transform -translate-y-1/2 translate-x-3 z-50", // 💡 FIX: Increased z-index to z-50
-                        "bg-zinc-800 text-white p-3 rounded-lg shadow-xl border border-zinc-700 min-w-48"
+                        "absolute left-full top-1/2 transform -translate-y-1/2 translate-x-3 z-50",
+                        "bg-zinc-800 text-white p-3 rounded-lg shadow-xl border border-zinc-700 min-w-48",
+                        "pointer-events-none" // 💡 FIX #1: Popover does not block mouse clicks
                     )}
                 >
                     <h4 className="font-bold text-sm mb-1">{token.name} Quick Stats</h4>

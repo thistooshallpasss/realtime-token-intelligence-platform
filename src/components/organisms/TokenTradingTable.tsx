@@ -149,16 +149,19 @@ export const TokenTradingTable: React.FC = () => {
                             return (
                                 <div
                                     key={virtualRow.key} // Outer div key for virtualization
-                                    className="absolute top-0 left-0 w-full"
+                                    className="absolute top-0 left-0 w-full relative z-0 hover:z-50"
                                     style={{
                                         height: virtualRow.size,
                                         transform: `translateY(${virtualRow.start}px)`,
                                     }}
                                 >
-                                    <TokenRow key={token.id} token={token} /> {/* Memoized child */}
+                                    {/* 💡 FIX #3: Remove key from the inner component */}
+                                    <TokenRow token={token} />
                                 </div>
                             );
                         })}
+
+
                     </div>
                 </div>
             </div>

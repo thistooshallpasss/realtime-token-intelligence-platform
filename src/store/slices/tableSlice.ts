@@ -1,14 +1,14 @@
-// src/store/slices/tableSlice.ts (Updated)
+// src/store/slices/tableSlice.ts (FIXED)
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { SortField, TokenStatus } from '@/types/token'; // Assuming TokenStatus is exported
+import { SortField, TokenStatus } from '@/types/token';
 
 type FilterStatus = TokenStatus | 'All';
 
 interface TableState {
+    // 💡 FIX 1: Allow null for currentSortField
     currentSortField: SortField | null;
     sortDirection: 'asc' | 'desc';
     activeTokenModalId: string | null;
-    // 💡 NEW: Filtering State
     filterStatus: FilterStatus;
 }
 
@@ -16,15 +16,21 @@ const initialState: TableState = {
     currentSortField: 'marketCap',
     sortDirection: 'desc',
     activeTokenModalId: null,
-    // 💡 Initialize filter
     filterStatus: 'All',
 };
+
+// 💡 FIX 2: Define payload type allowing null for field
+interface SetSortPayload {
+    field: SortField | null;
+    direction: 'asc' | 'desc';
+}
 
 const tableSlice = createSlice({
     name: 'table',
     initialState,
     reducers: {
-        setSort: (state, action: PayloadAction<{ field: SortField, direction: 'asc' | 'desc' }>) => {
+        // 💡 FIX 3: Use SetSortPayload in PayloadAction
+        setSort: (state, action: PayloadAction<SetSortPayload>) => {
             state.currentSortField = action.payload.field;
             state.sortDirection = action.payload.direction;
         },
@@ -34,7 +40,6 @@ const tableSlice = createSlice({
         closeTokenModal: (state) => {
             state.activeTokenModalId = null;
         },
-        // 💡 NEW REDUCER: Set the active filter status
         setFilterStatus: (state, action: PayloadAction<FilterStatus>) => {
             state.filterStatus = action.payload;
         },

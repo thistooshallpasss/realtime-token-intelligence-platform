@@ -13,7 +13,7 @@ import { Sparkline } from '@/components/atoms/Sparkline';
 // Status Badge
 import { StatusBadge } from '@/components/molecules/StatusBadge';
 
-// ⭐ NEW Token Hover Popover
+// ⭐ Token Hover Popover
 import { TokenHoverPopover } from '@/components/molecules/TokenHoverPopover';
 
 interface TokenRowProps {
@@ -51,6 +51,7 @@ export const TokenRow: React.FC<TokenRowProps> = React.memo(({ token }) => {
 
             {/* 1. Token (Symbol & Name) — 25% */}
             <div className="w-1/4 flex items-center gap-3">
+                {/* 💡 Wrap only the interactive area with the Popover */}
                 <TokenHoverPopover token={token}>
                     <div className="h-6 w-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs">
                         {token.symbol[0]}
