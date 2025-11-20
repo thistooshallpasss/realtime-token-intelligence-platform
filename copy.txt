@@ -1,0 +1,1985 @@
+// ===== PROJECT STRUCTURE =====
+.
+├── #
+├── README.md
+├── backend
+│   └── src
+│       ├── redis-service.ts
+│       ├── server.ts
+│       ├── token-metadata-api.ts
+│       └── websocket-handler.ts
+├── combine.sh
+├── copy.txt
+├── docs
+│   └── Architecture-Diagram.md
+├── eslint.config.mjs
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── public
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── vercel.svg
+│   └── window.svg
+├── src
+│   ├── app
+│   │   ├── favicon.ico
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components
+│   │   ├── atoms
+│   │   │   ├── PriceChangeIndicator.tsx
+│   │   │   └── Sparkline.tsx
+│   │   ├── molecules
+│   │   │   ├── CategoryTabs.tsx
+│   │   │   ├── StatusBadge.tsx
+│   │   │   ├── TokenHoverPopover.tsx
+│   │   │   ├── TokenRow.stories.tsx
+│   │   │   └── TokenRow.tsx
+│   │   ├── organisms
+│   │   │   ├── TokenDetailModal.tsx
+│   │   │   └── TokenTradingTable.tsx
+│   │   ├── templates
+│   │   │   └── Providers.tsx
+│   │   └── ui
+│   │       ├── Modal.tsx
+│   │       └── TableSkeleton.tsx
+│   ├── lib
+│   │   ├── constants
+│   │   │   └── mockTokens.ts
+│   │   ├── hooks
+│   │   │   ├── useTableSorting.ts
+│   │   │   └── useTokenData.ts
+│   │   └── utils
+│   │       └── cn.ts
+│   ├── next-env.d.ts
+│   ├── services
+│   │   ├── api
+│   │   └── websocket
+│   │       └── mockWebSocket.ts
+│   ├── store
+│   │   ├── slices
+│   │   │   └── tableSlice.ts
+│   │   └── store.ts
+│   ├── stories
+│   │   ├── Button.stories.ts
+│   │   ├── Button.tsx
+│   │   ├── Configure.mdx
+│   │   ├── Header.stories.ts
+│   │   ├── Header.tsx
+│   │   ├── Page.stories.ts
+│   │   ├── Page.tsx
+│   │   ├── assets
+│   │   │   ├── accessibility.png
+│   │   │   ├── accessibility.svg
+│   │   │   ├── addon-library.png
+│   │   │   ├── assets.png
+│   │   │   ├── avif-test-image.avif
+│   │   │   ├── context.png
+│   │   │   ├── discord.svg
+│   │   │   ├── docs.png
+│   │   │   ├── figma-plugin.png
+│   │   │   ├── github.svg
+│   │   │   ├── share.png
+│   │   │   ├── styling.png
+│   │   │   ├── testing.png
+│   │   │   ├── theming.png
+│   │   │   ├── tutorials.svg
+│   │   │   └── youtube.svg
+│   │   ├── button.css
+│   │   ├── header.css
+│   │   └── page.css
+│   └── types
+│       └── token.ts
+├── tsconfig.json
+├── vitest.config.ts
+└── vitest.shims.d.ts
+
+26 directories, 73 files
+
+// ===== CODE CONTENTS =====
+--------------------------------------------------
+// FILE: src/types/token.ts
+--------------------------------------------------
+// src/types/token.ts
+
+// Define the core structure of a single Token object
+export interface Token {
+    id: string; // Unique identifier (e.g., contract address or symbol)
+    symbol: string; // e.g., "ETH" or "UNI"
+    name: string; // e.g., "Ethereum" or "Uniswap"
+    currentPrice: number; // Current market price (real-time update target)
+    priceChange24h: number; // Price change in 24 hours (for conditional coloring)
+    volume24h: number; // Trading volume in 24 hours
+    liquidity: number; // Current liquidity pool size
+    status: 'New pairs' | 'Final Stretch' | 'Migrated'; // Corresponds to the required columns [cite: 4]
+    sparklineData: number[]; // Small array for the chart (last 7 days/24 hours)
+    marketCap: number; // Market capitalization (optional but good for trading UI)
+}
+
+// Define the structure of the real-time price update message
+export interface PriceUpdate {
+    id: string; // Token ID
+    newPrice: number;
+    // Optional: newVolume: number;
+}
+
+// Define the status keys for table organization
+export type TokenStatus = Token['status'];
+
+// Define the field keys used for sorting the table
+export type SortField = keyof Omit<Token, 'id' | 'symbol' | 'name' | 'sparklineData' | 'status'>;
+
+
+--------------------------------------------------
+// FILE: src/app/layout.tsx
+--------------------------------------------------
+// src/app/layout.tsx (Updated)
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google"; // [cite: 353]
+import "./globals.css";
+
+// Import the Providers component
+import { Providers } from "@/components/templates/Providers";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+}); // [cite: 353]
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+}); // [cite: 354]
+
+export const metadata: Metadata = {
+  title: "Real-Time Token Intelligence Platform", // Updated title
+  description: "A Master-Level High-Performance Token Trading Table", // Updated description
+}; // [cite: 355]
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {/* Wrap the entire app with the client-side providers */}
+        <Providers>
+          {children}
+        </Providers>
+      </body>
+    </html>
+  );
+}
+
+
+--------------------------------------------------
+// FILE: src/app/page.tsx
+--------------------------------------------------
+// src/app/page.tsx (UPDATED)
+import { TokenTradingTable } from '@/components/organisms/TokenTradingTable';
+import { TokenDetailModal } from '@/components/organisms/TokenDetailModal'; // NEW IMPORT
+import React from 'react';
+
+export default function Home() {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-black p-4 md:p-12">
+      <h1 className="text-3xl font-bold mb-8 dark:text-white">
+        Axiom Pulse Clone (Master Project)
+      </h1>
+      <TokenTradingTable />
+      {/* 💡 Include the Modal here so it can listen to Redux state */}
+      <TokenDetailModal />
+    </div>
+  );
+}
+
+
+--------------------------------------------------
+// FILE: src/app/globals.css
+--------------------------------------------------
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+
+/* src/app/globals.css (Add this to the end) */
+
+/* Tailwind includes for the flash colors */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.flash-green {
+  animation: flash-green-bg 0.5s ease-out;
+}
+
+.flash-red {
+  animation: flash-red-bg 0.5s ease-out;
+}
+
+/* Keyframes for smooth color transition (Highlight and fade out) */
+@keyframes flash-green-bg {
+  0% {
+    background-color: rgba(34, 197, 94, 0.4);
+  }
+
+  /* Tailwind green-500 */
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes flash-red-bg {
+  0% {
+    background-color: rgba(239, 68, 68, 0.4);
+  }
+
+  /* Tailwind red-500 */
+  100% {
+    background-color: transparent;
+  }
+}
+
+
+--------------------------------------------------
+// FILE: src/next-env.d.ts
+--------------------------------------------------
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+import "./.next/types/routes.d.ts";
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+
+
+--------------------------------------------------
+// FILE: src/components/ui/TableSkeleton.tsx
+--------------------------------------------------
+// src/components/ui/TableSkeleton.tsx
+import React from 'react';
+import { cn } from '@/lib/utils/cn';
+
+interface TableSkeletonProps {
+    rows?: number;
+}
+
+// Individual Skeleton Row
+const SkeletonRow: React.FC = () => (
+    <div className="flex text-sm py-3 px-4 border-b dark:border-zinc-800 animate-pulse">
+        {/* 1. Token */}
+        <div className="w-1/4 flex items-center gap-3">
+            <div className="h-6 w-6 rounded-full bg-gray-200 dark:bg-zinc-700"></div>
+            <div className="flex flex-col">
+                <div className="h-3 w-16 bg-gray-200 dark:bg-zinc-700 rounded mb-1"></div>
+                <div className="h-2 w-12 bg-gray-100 dark:bg-zinc-800 rounded"></div>
+            </div>
+        </div>
+
+        {/* 2. Price */}
+        <div className="w-[10%] text-right">
+            <div className="h-3 w-10 bg-gray-200 dark:bg-zinc-700 rounded inline-block"></div>
+        </div>
+
+        {/* 3. 24H Change */}
+        <div className="w-[10%] text-right">
+            <div className="h-3 w-8 bg-gray-200 dark:bg-zinc-700 rounded inline-block"></div>
+        </div>
+
+        {/* 4. Liquidity */}
+        <div className="w-[15%] text-right">
+            <div className="h-3 w-14 bg-gray-200 dark:bg-zinc-700 rounded inline-block"></div>
+        </div>
+
+        {/* 5. Volume (24H) */}
+        <div className="w-[20%] text-right">
+            <div className="h-3 w-16 bg-gray-200 dark:bg-zinc-700 rounded inline-block"></div>
+        </div>
+
+        {/* 6. Status/Category */}
+        <div className="w-[15%] text-right">
+            <div className="h-3 w-10 bg-gray-200 dark:bg-zinc-700 rounded inline-block"></div>
+        </div>
+    </div>
+);
+
+// Main Table Skeleton
+export const TableSkeleton: React.FC<TableSkeletonProps> = ({ rows = 10 }) => {
+    return (
+        <div className="w-full bg-white dark:bg-[#1a1a1a] rounded-xl shadow-lg min-w-[700px]">
+            {/* Header placeholder - use a static header or a slightly lighter skeleton */}
+            <div className="flex text-xs font-semibold text-gray-500 uppercase py-2 px-4 border-b dark:border-zinc-800">
+                <span className="w-1/4">Token</span>
+                <span className="w-[10%] text-right">Price</span>
+                <span className="w-[10%] text-right">24H %</span>
+                <span className="w-[15%] text-right">Liquidity</span>
+                <span className="w-[20%] text-right">Volume (24H)</span>
+                <span className="w-[15%] text-right">Status</span>
+            </div>
+
+            {/* Render the specified number of rows */}
+            {Array.from({ length: rows }).map((_, index) => (
+                <SkeletonRow key={index} />
+            ))}
+        </div>
+    );
+};
+
+
+--------------------------------------------------
+// FILE: src/components/ui/Modal.tsx
+--------------------------------------------------
+'use client';
+
+import React from 'react';
+
+interface ModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+}
+
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={onClose}
+        >
+            <div
+                className="bg-white dark:bg-zinc-900 rounded-lg shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center border-b pb-3 dark:border-zinc-700">
+                    <h2 className="text-xl font-bold">{title}</h2>
+
+                    <button
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-gray-800 dark:hover:text-white transition-colors"
+                        aria-label="Close Modal"   // ♿ ACCESSIBILITY FIX
+                    >
+                        &times;
+                    </button>
+                </div>
+
+                <div className="py-4">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+
+--------------------------------------------------
+// FILE: src/components/molecules/CategoryTabs.tsx
+--------------------------------------------------
+// src/components/molecules/CategoryTabs.tsx
+'use client';
+
+import React from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '@/store/store';
+import { setFilterStatus } from '@/store/slices/tableSlice';
+import { TokenStatus } from '@/types/token';
+import { cn } from '@/lib/utils/cn';
+
+const CATEGORIES: ('All' | TokenStatus)[] = [
+    'All',
+    'New pairs',
+    'Final Stretch',
+    'Migrated'
+];
+
+export const CategoryTabs: React.FC = () => {
+    const dispatch = useDispatch();
+    const activeFilter = useSelector((state: RootState) => state.table.filterStatus);
+
+    return (
+        <div className="flex space-x-2 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg max-w-fit mb-6">
+            {CATEGORIES.map((status) => (
+                <button
+                    key={status}
+                    onClick={() => dispatch(setFilterStatus(status))}
+                    className={cn(
+                        "px-3 py-1 text-sm font-medium rounded-md transition-colors",
+                        "whitespace-nowrap",
+                        // Active state styling
+                        activeFilter === status
+                            ? "bg-white text-black dark:bg-blue-600 dark:text-white shadow-md"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
+                    )}
+                >
+                    {status}
+                </button>
+            ))}
+        </div>
+    );
+};
+
+
+--------------------------------------------------
+// FILE: src/components/molecules/StatusBadge.tsx
+--------------------------------------------------
+// src/components/molecules/StatusBadge.tsx
+import React from 'react';
+import { cn } from '@/lib/utils/cn';
+import { TokenStatus } from '@/types/token';
+
+interface StatusBadgeProps {
+    status: TokenStatus;
+}
+
+const statusMap: Record<TokenStatus, { color: string; description: string }> = {
+    'New pairs': {
+        color: 'bg-green-500/20 text-green-500 border-green-500',
+        description: 'Newly listed pair, monitor for volatility.'
+    },
+    'Final Stretch': {
+        color: 'bg-yellow-500/20 text-yellow-500 border-yellow-500',
+        description: 'Approaching listing/migration completion.'
+    },
+    'Migrated': {
+        color: 'bg-blue-500/20 text-blue-500 border-blue-500',
+        description: 'Successfully migrated to the new contract.'
+    },
+};
+
+export const StatusBadge: React.FC<StatusBadgeProps> = React.memo(({ status }) => {
+    const { color, description } = statusMap[status];
+
+    return (
+        // Tooltip Container (using Tailwind for simple hover effect)
+        <div className="group relative inline-block">
+            <span
+                className={cn(
+                    "px-2 py-0.5 rounded-full text-xs font-semibold tracking-wider transition-all duration-150 border",
+                    color
+                )}
+            >
+                {status}
+            </span>
+
+            {/* Tooltip Content (hidden by default) */}
+            <div
+                role="tooltip"
+                className={cn(
+                    "absolute left-1/2 -top-10 z-20 transform -translate-x-1/2 opacity-0",
+                    "group-hover:opacity-100 group-hover:-translate-y-1 transition-all duration-300",
+                    "bg-zinc-700 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap pointer-events-none"
+                )}
+            >
+                {description}
+                <div className="absolute left-1/2 top-full h-2 w-2 transform -translate-x-1/2 rotate-45 bg-zinc-700"></div>
+            </div>
+        </div>
+    );
+});
+
+StatusBadge.displayName = 'StatusBadge';
+
+
+--------------------------------------------------
+// FILE: src/components/molecules/TokenHoverPopover.tsx
+--------------------------------------------------
+// src/components/molecules/TokenHoverPopover.tsx
+import React, { useState } from 'react';
+import { Token } from '@/types/token';
+import { cn } from '@/lib/utils/cn';
+
+interface TokenHoverPopoverProps {
+    token: Token;
+    children: React.ReactNode;
+}
+
+export const TokenHoverPopover: React.FC<TokenHoverPopoverProps> = ({ token, children }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div
+            className="relative inline-block"
+            onMouseEnter={() => setIsOpen(true)}
+            onMouseLeave={() => setIsOpen(false)}
+        >
+            {children}
+
+            {/* Popover Content */}
+            {isOpen && (
+                <div
+                    className={cn(
+                        "absolute left-full top-1/2 transform -translate-y-1/2 translate-x-3 z-50", // 💡 FIX: Increased z-index to z-50
+                        "bg-zinc-800 text-white p-3 rounded-lg shadow-xl border border-zinc-700 min-w-48"
+                    )}
+                >
+                    <h4 className="font-bold text-sm mb-1">{token.name} Quick Stats</h4>
+                    <ul className="text-xs space-y-0.5">
+                        <li>
+                            Market Cap: $
+                            {new Intl.NumberFormat('en-US', { notation: 'compact' }).format(token.marketCap)}
+                        </li>
+                        <li>
+                            24H Volume: $
+                            {new Intl.NumberFormat('en-US', { notation: 'compact' }).format(token.volume24h)}
+                        </li>
+                        <li>
+                            Current Liquidity: $
+                            {new Intl.NumberFormat('en-US', { notation: 'compact' }).format(token.liquidity)}
+                        </li>
+                    </ul>
+
+                    {/* Triangle Pointer */}
+                    <div className="absolute right-full top-1/2 transform -translate-y-1/2 w-3 h-3 rotate-45 bg-zinc-800 border-l border-b border-zinc-700 translate-x-1"></div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+
+--------------------------------------------------
+// FILE: src/components/molecules/TokenRow.stories.tsx
+--------------------------------------------------
+// src/components/molecules/TokenRow.stories.tsx
+import type { Meta, StoryObj } from '@storybook/react';
+import { TokenRow } from './TokenRow';
+import { Token } from '@/types/token';
+
+const mockToken: Token = {
+    id: 'id-STORY',
+    symbol: 'STORY',
+    name: 'Storybook Token',
+    currentPrice: 345.67,
+    priceChange24h: 4.52,
+    volume24h: 89000000,
+    liquidity: 150000000,
+    status: 'New pairs',
+    sparklineData: [10, 20, 15, 25, 30, 28, 35],
+    marketCap: 200000000,
+};
+
+const meta: Meta<typeof TokenRow> = {
+    title: 'Molecules/TokenRow',
+    component: TokenRow,
+    tags: ['autodocs'],
+    args: {
+        token: mockToken,
+    },
+};
+
+export default meta;
+type Story = StoryObj<typeof TokenRow>;
+
+export const Default: Story = {};
+
+export const DecreasingPrice: Story = {
+    args: {
+        token: {
+            ...mockToken,
+            id: 'id-DOWN',
+            symbol: 'DOWN',
+            priceChange24h: -1.5,
+            currentPrice: 123.45,
+        }
+    }
+};
+
+
+--------------------------------------------------
+// FILE: src/components/molecules/TokenRow.tsx
+--------------------------------------------------
+import React from 'react';
+import { Token } from '@/types/token';
+import { cn } from '@/lib/utils/cn';
+import { PriceChangeIndicator } from '@/components/atoms/PriceChangeIndicator';
+
+// Redux
+import { useDispatch } from 'react-redux';
+import { openTokenModal } from '@/store/slices/tableSlice';
+
+// Sparkline
+import { Sparkline } from '@/components/atoms/Sparkline';
+
+// Status Badge
+import { StatusBadge } from '@/components/molecules/StatusBadge';
+
+// ⭐ NEW Token Hover Popover
+import { TokenHoverPopover } from '@/components/molecules/TokenHoverPopover';
+
+interface TokenRowProps {
+    token: Token;
+}
+
+// Helper to format large numbers
+const formatNumber = (num: number) =>
+    new Intl.NumberFormat('en-US', {
+        notation: 'compact',
+        compactDisplay: 'short',
+        maximumFractionDigits: 1,
+    }).format(num);
+
+export const TokenRow: React.FC<TokenRowProps> = React.memo(({ token }) => {
+    const dispatch = useDispatch();
+
+    const priceChangeColor =
+        token.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500';
+    const isPositive = token.priceChange24h >= 0;
+
+    const handleRowClick = () => {
+        dispatch(openTokenModal(token.id));
+        console.log(`Token clicked: ${token.symbol}`);
+    };
+
+    return (
+        <div
+            className={cn(
+                "flex text-sm py-3 px-4 border-b dark:border-zinc-800 transition-colors cursor-pointer relative z-10", // 💡 Added 'relative z-10'
+                "hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
+            )}
+            onClick={handleRowClick}
+        >
+
+            {/* 1. Token (Symbol & Name) — 25% */}
+            <div className="w-1/4 flex items-center gap-3">
+                <TokenHoverPopover token={token}>
+                    <div className="h-6 w-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs">
+                        {token.symbol[0]}
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="font-semibold">{token.symbol}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {token.name}
+                        </span>
+                    </div>
+                </TokenHoverPopover>
+            </div>
+
+            {/* 2. Price — 10% */}
+            <span className="w-[10%] text-right font-medium">
+                <PriceChangeIndicator price={token.currentPrice} />
+            </span>
+
+            {/* 3. 24H % — 10% */}
+            <span className={cn("w-[10%] text-right font-medium", priceChangeColor)}>
+                {token.priceChange24h.toFixed(2)}%
+            </span>
+
+            {/* 4. Sparkline — 15% */}
+            <div className="w-[15%] flex justify-end items-center pr-4">
+                <Sparkline data={token.sparklineData} isPositive={isPositive} />
+            </div>
+
+            {/* 5. Liquidity — 10% */}
+            <span className="w-[10%] text-right text-gray-500 dark:text-gray-400">
+                ${formatNumber(token.liquidity)}
+            </span>
+
+            {/* 6. Volume 24H — 15% */}
+            <span className="w-[15%] text-right text-gray-500 dark:text-gray-400">
+                ${formatNumber(token.volume24h)}
+            </span>
+
+            {/* 7. Status — 15% */}
+            <div className="w-[15%] flex justify-end items-center">
+                <StatusBadge status={token.status} />
+            </div>
+        </div>
+    );
+});
+
+TokenRow.displayName = 'TokenRow';
+
+
+
+--------------------------------------------------
+// FILE: src/components/atoms/PriceChangeIndicator.tsx
+--------------------------------------------------
+// src/components/atoms/PriceChangeIndicator.tsx
+import React, { useRef, useEffect } from 'react';
+import { cn } from '@/lib/utils/cn'; // We'll create this utility later for Tailwind merging
+
+interface PriceChangeIndicatorProps {
+    price: number;
+}
+
+export const PriceChangeIndicator: React.FC<PriceChangeIndicatorProps> = ({ price }) => {
+    const previousPrice = useRef<number>(price);
+    const [flashClass, setFlashClass] = React.useState('');
+
+    useEffect(() => {
+        if (price === previousPrice.current) {
+            return;
+        }
+
+        // Determine the flash color based on price direction
+        const newFlashClass = price > previousPrice.current
+            ? 'flash-green' // Price increased
+            : 'flash-red';  // Price decreased
+
+        setFlashClass(newFlashClass);
+
+        // Remove the flash class after the CSS transition finishes (~1.5s)
+        const timer = setTimeout(() => {
+            setFlashClass('');
+        }, 1500);
+
+        previousPrice.current = price;
+        return () => clearTimeout(timer);
+    }, [price]);
+
+    return (
+        <span
+            className={cn(
+                "font-mono transition-colors duration-500 ease-out", // Base styling for smooth transition
+                flashClass
+            )}
+        >
+            ${price.toFixed(2)}
+        </span>
+    );
+};
+
+
+--------------------------------------------------
+// FILE: src/components/atoms/Sparkline.tsx
+--------------------------------------------------
+// src/components/atoms/Sparkline.tsx
+import React from 'react';
+import {
+    AreaChart,
+    Area,
+    ResponsiveContainer,
+} from 'recharts';
+
+interface SparklineProps {
+    data: number[];
+    isPositive: boolean;
+}
+
+// Convert number array to object array format required by Recharts
+const formatData = (data: number[]) => {
+    return data.map((price, index) => ({
+        name: `Day ${index}`,
+        price: price,
+    }));
+};
+
+// Use React.memo for high performance (crucial atom)
+export const Sparkline: React.FC<SparklineProps> = React.memo(({ data, isPositive }) => {
+    const chartData = formatData(data);
+
+    // Set the color based on the 24H change (passed as isPositive)
+    const chartColor = isPositive ? '#22c55e' : '#ef4444'; // Tailwind green-500 or red-500
+
+    return (
+        <div className="w-16 h-8 -my-2"> {/* Fixed small size for the cell */}
+            <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                    data={chartData}
+                    margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+                >
+                    <defs>
+                        {/* Gradient definition for better visual appeal */}
+                        <linearGradient id={`colorPrice-${chartColor}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={chartColor} stopOpacity={0.8} />
+                            <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
+                        </linearGradient>
+                    </defs>
+                    <Area
+                        type="monotone"
+                        dataKey="price"
+                        stroke={chartColor}
+                        fillOpacity={1}
+                        strokeWidth={1.5}
+                        dot={false}
+                        fill={`url(#colorPrice-${chartColor})`}
+                    />
+                </AreaChart>
+            </ResponsiveContainer>
+        </div>
+    );
+});
+
+Sparkline.displayName = 'Sparkline';
+
+
+--------------------------------------------------
+// FILE: src/components/templates/Providers.tsx
+--------------------------------------------------
+// src/components/templates/Providers.tsx
+'use client';
+
+import React from 'react';
+import { Provider } from 'react-redux';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { store } from '@/store/store';
+
+// Create a client for React Query
+const queryClient = new QueryClient();
+
+export function Providers({ children }: { children: React.ReactNode }) {
+    return (
+        // 1. Redux Provider
+        <Provider store={store}>
+            {/* 2. React Query Provider */}
+            <QueryClientProvider client={queryClient}>
+                {children}
+                {/* Optional: ReactQueryDevtools in a dev environment */}
+            </QueryClientProvider>
+        </Provider>
+    );
+}
+
+
+--------------------------------------------------
+// FILE: src/components/organisms/TokenDetailModal.tsx
+--------------------------------------------------
+// src/components/organisms/TokenDetailModal.tsx
+'use client';
+
+import React from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '@/store/store';
+import { closeTokenModal } from '@/store/slices/tableSlice';
+import { Modal } from '@/components/ui/Modal';
+import { useTokenData } from '@/lib/hooks/useTokenData'; // To get token details
+
+export const TokenDetailModal: React.FC = () => {
+    const dispatch: AppDispatch = useDispatch();
+    const activeTokenId = useSelector((state: RootState) => state.table.activeTokenModalId);
+
+    // Fetch current token list (using data from React Query cache)
+    const { data: tokens } = useTokenData();
+
+    const token = tokens?.find(t => t.id === activeTokenId);
+
+    const isOpen = !!token;
+
+    const handleClose = () => {
+        dispatch(closeTokenModal());
+    };
+
+    if (!isOpen || !token) return null;
+
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={handleClose}
+            title={`${token.name} (${token.symbol})`}
+        >
+            <div className="space-y-3 text-sm">
+                <p><strong>Current Price:</strong> ${token.currentPrice.toFixed(2)}</p>
+                <p><strong>24H Change:</strong> <span className={token.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}>{token.priceChange24h.toFixed(2)}%</span></p>
+                <p><strong>Market Cap:</strong> ${new Intl.NumberFormat('en-US').format(token.marketCap)}</p>
+                <p><strong>Liquidity:</strong> ${new Intl.NumberFormat('en-US').format(token.liquidity)}</p>
+                <p><strong>Volume (24H):</strong> ${new Intl.NumberFormat('en-US').format(token.volume24h)}</p>
+                <p><strong>Status:</strong> {token.status}</p>
+                {/* Placeholder for Sparkline Chart (Recharts) */}
+                <div className="mt-4 p-2 bg-zinc-100 dark:bg-zinc-800 rounded">
+                    <p className="text-xs text-center text-gray-500">7-Day Price History (Sparkline Placeholder)</p>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+
+--------------------------------------------------
+// FILE: src/components/organisms/TokenTradingTable.tsx
+--------------------------------------------------
+'use client';
+
+import React from 'react';
+import { useTokenData } from '@/lib/hooks/useTokenData';
+import { useTableSorting } from '@/lib/hooks/useTableSorting';
+import { TokenRow } from '@/components/molecules/TokenRow';
+import { TableSkeleton } from '@/components/ui/TableSkeleton';
+import { Token, SortField } from '@/types/token';
+import { cn } from '@/lib/utils/cn';
+import { ArrowUp, ArrowDown } from 'lucide-react';
+
+// Redux & Filtering
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import { CategoryTabs } from '@/components/molecules/CategoryTabs';
+
+// 💡 Virtualizer
+import { useVirtualizer } from '@tanstack/react-virtual';
+
+interface HeaderCellProps {
+    field: SortField;
+    label: string;
+    onSort: (field: SortField) => void;
+    isSorting: boolean;
+    direction: 'asc' | 'desc';
+    className?: string;
+}
+
+const SortableHeaderCell: React.FC<HeaderCellProps> = ({
+    field, label, onSort, isSorting, direction, className
+}) => (
+    <button
+        className={cn(
+            "flex items-center justify-end gap-1 bg-transparent border-none p-0 " +
+            "cursor-pointer hover:text-white transition-colors font-semibold " +
+            "text-gray-500 uppercase text-xs",
+            className
+        )}
+        onClick={() => onSort(field)}
+        aria-label={`Sort by ${label}`}
+    >
+        {label}
+        {isSorting && (
+            direction === 'asc'
+                ? <ArrowUp size={14} className="text-blue-400" />
+                : <ArrowDown size={14} className="text-blue-400" />
+        )}
+    </button>
+);
+
+const TableHeader: React.FC<{
+    currentSortField: SortField | null;
+    sortDirection: 'asc' | 'desc';
+    handleSort: (field: SortField) => void;
+}> = ({ currentSortField, sortDirection, handleSort }) => (
+    <div className="flex text-xs font-semibold text-gray-500 uppercase py-2 px-4 border-b dark:border-zinc-800 sticky top-0 bg-white dark:bg-[#0a0a0a] z-10">
+        <span className="w-1/4">Token</span>
+        <SortableHeaderCell
+            field="currentPrice"
+            label="Price"
+            onSort={handleSort}
+            isSorting={currentSortField === 'currentPrice'}
+            direction={sortDirection}
+            className="w-[10%]"
+        />
+        <SortableHeaderCell
+            field="priceChange24h"
+            label="24H %"
+            onSort={handleSort}
+            isSorting={currentSortField === 'priceChange24h'}
+            direction={sortDirection}
+            className="w-[10%]"
+        />
+        <span className="w-[15%] text-right pr-4">Chart (7d)</span>
+        <SortableHeaderCell
+            field="liquidity"
+            label="Liquidity"
+            onSort={handleSort}
+            isSorting={currentSortField === 'liquidity'}
+            direction={sortDirection}
+            className="w-[10%]"
+        />
+        <SortableHeaderCell
+            field="volume24h"
+            label="Volume (24H)"
+            onSort={handleSort}
+            isSorting={currentSortField === 'volume24h'}
+            direction={sortDirection}
+            className="w-[15%]"
+        />
+        <span className="w-[15%] text-right">Status</span>
+    </div>
+);
+
+export const TokenTradingTable: React.FC = () => {
+    const { data: tokens, isLoading, isError } = useTokenData();
+    const filterStatus = useSelector((state: RootState) => state.table.filterStatus);
+
+    const filteredTokens = React.useMemo(() => {
+        if (!tokens || filterStatus === 'All') return tokens || [];
+        return tokens.filter(token => token.status === filterStatus);
+    }, [tokens, filterStatus]);
+
+    const {
+        sortedData,
+        currentSortField,
+        sortDirection,
+        handleSort
+    } = useTableSorting(filteredTokens);
+
+    // --- Virtualizer ---
+    const parentRef = React.useRef<HTMLDivElement>(null);
+    const rowVirtualizer = useVirtualizer({
+        count: sortedData.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 50,
+        overscan: 5,
+    });
+
+    const virtualRows = rowVirtualizer.getVirtualItems();
+
+    if (isError) return <div className="text-center text-red-500 p-8">Error loading token data.</div>;
+    if (isLoading) return <TableSkeleton rows={15} />;
+
+    return (
+        <div className="w-full">
+            <CategoryTabs />
+
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-lg overflow-x-auto min-w-[700px]">
+                <TableHeader
+                    currentSortField={currentSortField}
+                    sortDirection={sortDirection}
+                    handleSort={handleSort}
+                />
+
+                {/* Virtualized Scroll Container */}
+                <div
+                    ref={parentRef}
+                    className="overflow-y-auto max-h-[80vh]"
+                    style={{ height: '80vh' }}
+                >
+                    <div
+                        className="relative w-full"
+                        style={{ height: rowVirtualizer.getTotalSize() }}
+                    >
+                        {/* ✅ Use virtualRows for virtualized mapping */}
+                        {virtualRows.map((virtualRow) => {
+                            const token = sortedData[virtualRow.index];
+                            return (
+                                <div
+                                    key={virtualRow.key} // Outer div key for virtualization
+                                    className="absolute top-0 left-0 w-full"
+                                    style={{
+                                        height: virtualRow.size,
+                                        transform: `translateY(${virtualRow.start}px)`,
+                                    }}
+                                >
+                                    <TokenRow key={token.id} token={token} /> {/* Memoized child */}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+
+--------------------------------------------------
+// FILE: src/stories/Button.stories.ts
+--------------------------------------------------
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+
+import { fn } from 'storybook/test';
+
+import { Button } from './Button';
+
+// More on how to set up stories at: https://storybook.js.org/docs/writing-stories#default-export
+const meta = {
+  title: 'Example/Button',
+  component: Button,
+  parameters: {
+    // Optional parameter to center the component in the Canvas. More info: https://storybook.js.org/docs/configure/story-layout
+    layout: 'centered',
+  },
+  // This component will have an automatically generated Autodocs entry: https://storybook.js.org/docs/writing-docs/autodocs
+  tags: ['autodocs'],
+  // More on argTypes: https://storybook.js.org/docs/api/argtypes
+  argTypes: {
+    backgroundColor: { control: 'color' },
+  },
+  // Use `fn` to spy on the onClick arg, which will appear in the actions panel once invoked: https://storybook.js.org/docs/essentials/actions#story-args
+  args: { onClick: fn() },
+} satisfies Meta<typeof Button>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+// More on writing stories with args: https://storybook.js.org/docs/writing-stories/args
+export const Primary: Story = {
+  args: {
+    primary: true,
+    label: 'Button',
+  },
+};
+
+export const Secondary: Story = {
+  args: {
+    label: 'Button',
+  },
+};
+
+export const Large: Story = {
+  args: {
+    size: 'large',
+    label: 'Button',
+  },
+};
+
+export const Small: Story = {
+  args: {
+    size: 'small',
+    label: 'Button',
+  },
+};
+
+
+
+--------------------------------------------------
+// FILE: src/stories/Page.stories.ts
+--------------------------------------------------
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+
+import { expect, userEvent, within } from 'storybook/test';
+
+import { Page } from './Page';
+
+const meta = {
+  title: 'Example/Page',
+  component: Page,
+  parameters: {
+    // More on how to position stories at: https://storybook.js.org/docs/configure/story-layout
+    layout: 'fullscreen',
+  },
+} satisfies Meta<typeof Page>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const LoggedOut: Story = {};
+
+// More on component testing: https://storybook.js.org/docs/writing-tests/interaction-testing
+export const LoggedIn: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const loginButton = canvas.getByRole('button', { name: /Log in/i });
+    await expect(loginButton).toBeInTheDocument();
+    await userEvent.click(loginButton);
+    await expect(loginButton).not.toBeInTheDocument();
+
+    const logoutButton = canvas.getByRole('button', { name: /Log out/i });
+    await expect(logoutButton).toBeInTheDocument();
+  },
+};
+
+
+
+--------------------------------------------------
+// FILE: src/stories/page.css
+--------------------------------------------------
+.storybook-page {
+  margin: 0 auto;
+  padding: 48px 20px;
+  max-width: 600px;
+  color: #333;
+  font-size: 14px;
+  line-height: 24px;
+  font-family: 'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.storybook-page h2 {
+  display: inline-block;
+  vertical-align: top;
+  margin: 0 0 4px;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1;
+}
+
+.storybook-page p {
+  margin: 1em 0;
+}
+
+.storybook-page a {
+  color: inherit;
+}
+
+.storybook-page ul {
+  margin: 1em 0;
+  padding-left: 30px;
+}
+
+.storybook-page li {
+  margin-bottom: 8px;
+}
+
+.storybook-page .tip {
+  display: inline-block;
+  vertical-align: top;
+  margin-right: 10px;
+  border-radius: 1em;
+  background: #e7fdd8;
+  padding: 4px 12px;
+  color: #357a14;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 12px;
+}
+
+.storybook-page .tip-wrapper {
+  margin-top: 40px;
+  margin-bottom: 40px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.storybook-page .tip-wrapper svg {
+  display: inline-block;
+  vertical-align: top;
+  margin-top: 3px;
+  margin-right: 4px;
+  width: 12px;
+  height: 12px;
+}
+
+.storybook-page .tip-wrapper svg path {
+  fill: #1ea7fd;
+}
+
+
+
+--------------------------------------------------
+// FILE: src/stories/Header.tsx
+--------------------------------------------------
+import { Button } from './Button';
+import './header.css';
+
+type User = {
+  name: string;
+};
+
+export interface HeaderProps {
+  user?: User;
+  onLogin?: () => void;
+  onLogout?: () => void;
+  onCreateAccount?: () => void;
+}
+
+export const Header = ({ user, onLogin, onLogout, onCreateAccount }: HeaderProps) => (
+  <header>
+    <div className="storybook-header">
+      <div>
+        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <g fill="none" fillRule="evenodd">
+            <path
+              d="M10 0h12a10 10 0 0110 10v12a10 10 0 01-10 10H10A10 10 0 010 22V10A10 10 0 0110 0z"
+              fill="#FFF"
+            />
+            <path
+              d="M5.3 10.6l10.4 6v11.1l-10.4-6v-11zm11.4-6.2l9.7 5.5-9.7 5.6V4.4z"
+              fill="#555AB9"
+            />
+            <path
+              d="M27.2 10.6v11.2l-10.5 6V16.5l10.5-6zM15.7 4.4v11L6 10l9.7-5.5z"
+              fill="#91BAF8"
+            />
+          </g>
+        </svg>
+        <h1>Acme</h1>
+      </div>
+      <div>
+        {user ? (
+          <>
+            <span className="welcome">
+              Welcome, <b>{user.name}</b>!
+            </span>
+            <Button size="small" onClick={onLogout} label="Log out" />
+          </>
+        ) : (
+          <>
+            <Button size="small" onClick={onLogin} label="Log in" />
+            <Button primary size="small" onClick={onCreateAccount} label="Sign up" />
+          </>
+        )}
+      </div>
+    </div>
+  </header>
+);
+
+
+
+--------------------------------------------------
+// FILE: src/stories/button.css
+--------------------------------------------------
+.storybook-button {
+  display: inline-block;
+  cursor: pointer;
+  border: 0;
+  border-radius: 3em;
+  font-weight: 700;
+  line-height: 1;
+  font-family: 'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+.storybook-button--primary {
+  background-color: #555ab9;
+  color: white;
+}
+.storybook-button--secondary {
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 0px 0px 1px inset;
+  background-color: transparent;
+  color: #333;
+}
+.storybook-button--small {
+  padding: 10px 16px;
+  font-size: 12px;
+}
+.storybook-button--medium {
+  padding: 11px 20px;
+  font-size: 14px;
+}
+.storybook-button--large {
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+
+
+--------------------------------------------------
+// FILE: src/stories/header.css
+--------------------------------------------------
+.storybook-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 15px 20px;
+  font-family: 'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.storybook-header svg {
+  display: inline-block;
+  vertical-align: top;
+}
+
+.storybook-header h1 {
+  display: inline-block;
+  vertical-align: top;
+  margin: 6px 0 6px 10px;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.storybook-header button + button {
+  margin-left: 10px;
+}
+
+.storybook-header .welcome {
+  margin-right: 10px;
+  color: #333;
+  font-size: 14px;
+}
+
+
+
+--------------------------------------------------
+// FILE: src/stories/Button.tsx
+--------------------------------------------------
+import './button.css';
+
+export interface ButtonProps {
+  /** Is this the principal call to action on the page? */
+  primary?: boolean;
+  /** What background color to use */
+  backgroundColor?: string;
+  /** How large should the button be? */
+  size?: 'small' | 'medium' | 'large';
+  /** Button contents */
+  label: string;
+  /** Optional click handler */
+  onClick?: () => void;
+}
+
+/** Primary UI component for user interaction */
+export const Button = ({
+  primary = false,
+  size = 'medium',
+  backgroundColor,
+  label,
+  ...props
+}: ButtonProps) => {
+  const mode = primary ? 'storybook-button--primary' : 'storybook-button--secondary';
+  return (
+    <button
+      type="button"
+      className={['storybook-button', `storybook-button--${size}`, mode].join(' ')}
+      {...props}
+    >
+      {label}
+      <style jsx>{`
+        button {
+          background-color: ${backgroundColor};
+        }
+      `}</style>
+    </button>
+  );
+};
+
+
+
+--------------------------------------------------
+// FILE: src/stories/Page.tsx
+--------------------------------------------------
+import React from 'react';
+
+import { Header } from './Header';
+import './page.css';
+
+type User = {
+  name: string;
+};
+
+export const Page: React.FC = () => {
+  const [user, setUser] = React.useState<User>();
+
+  return (
+    <article>
+      <Header
+        user={user}
+        onLogin={() => setUser({ name: 'Jane Doe' })}
+        onLogout={() => setUser(undefined)}
+        onCreateAccount={() => setUser({ name: 'Jane Doe' })}
+      />
+
+      <section className="storybook-page">
+        <h2>Pages in Storybook</h2>
+        <p>
+          We recommend building UIs with a{' '}
+          <a href="https://componentdriven.org" target="_blank" rel="noopener noreferrer">
+            <strong>component-driven</strong>
+          </a>{' '}
+          process starting with atomic components and ending with pages.
+        </p>
+        <p>
+          Render pages with mock data. This makes it easy to build and review page states without
+          needing to navigate to them in your app. Here are some handy patterns for managing page
+          data in Storybook:
+        </p>
+        <ul>
+          <li>
+            Use a higher-level connected component. Storybook helps you compose such data from the
+            "args" of child component stories
+          </li>
+          <li>
+            Assemble data in the page component from your services. You can mock these services out
+            using Storybook.
+          </li>
+        </ul>
+        <p>
+          Get a guided tutorial on component-driven development at{' '}
+          <a href="https://storybook.js.org/tutorials/" target="_blank" rel="noopener noreferrer">
+            Storybook tutorials
+          </a>
+          . Read more in the{' '}
+          <a href="https://storybook.js.org/docs" target="_blank" rel="noopener noreferrer">
+            docs
+          </a>
+          .
+        </p>
+        <div className="tip-wrapper">
+          <span className="tip">Tip</span> Adjust the width of the canvas with the{' '}
+          <svg width="10" height="10" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg">
+            <g fill="none" fillRule="evenodd">
+              <path
+                d="M1.5 5.2h4.8c.3 0 .5.2.5.4v5.1c-.1.2-.3.3-.4.3H1.4a.5.5 0 01-.5-.4V5.7c0-.3.2-.5.5-.5zm0-2.1h6.9c.3 0 .5.2.5.4v7a.5.5 0 01-1 0V4H1.5a.5.5 0 010-1zm0-2.1h9c.3 0 .5.2.5.4v9.1a.5.5 0 01-1 0V2H1.5a.5.5 0 010-1zm4.3 5.2H2V10h3.8V6.2z"
+                id="a"
+                fill="#999"
+              />
+            </g>
+          </svg>
+          Viewports addon in the toolbar
+        </div>
+      </section>
+    </article>
+  );
+};
+
+
+
+--------------------------------------------------
+// FILE: src/stories/Header.stories.ts
+--------------------------------------------------
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+
+import { fn } from 'storybook/test';
+
+import { Header } from './Header';
+
+const meta = {
+  title: 'Example/Header',
+  component: Header,
+  // This component will have an automatically generated Autodocs entry: https://storybook.js.org/docs/writing-docs/autodocs
+  tags: ['autodocs'],
+  parameters: {
+    // More on how to position stories at: https://storybook.js.org/docs/configure/story-layout
+    layout: 'fullscreen',
+  },
+  args: {
+    onLogin: fn(),
+    onLogout: fn(),
+    onCreateAccount: fn(),
+  },
+} satisfies Meta<typeof Header>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const LoggedIn: Story = {
+  args: {
+    user: {
+      name: 'Jane Doe',
+    },
+  },
+};
+
+export const LoggedOut: Story = {};
+
+
+
+--------------------------------------------------
+// FILE: src/lib/constants/mockTokens.ts
+--------------------------------------------------
+// src/lib/constants/mockTokens.ts
+import { Token, TokenStatus } from '@/types/token';
+
+const generateMockData = (count: number): Token[] => {
+    const statuses: TokenStatus[] = ['New pairs', 'Final Stretch', 'Migrated'];
+    const mockTokens: Token[] = [];
+
+    for (let i = 1; i <= count; i++) {
+        const symbol = `TKN${i}`;
+        const status = statuses[i % statuses.length];
+        const basePrice = Math.random() * 1000 + 50; // Price between 50 and 1050
+
+        mockTokens.push({
+            id: `id-${i}`,
+            symbol: symbol,
+            name: `Token ${symbol}`,
+            currentPrice: parseFloat(basePrice.toFixed(2)),
+            priceChange24h: parseFloat((Math.random() * 20 - 10).toFixed(2)), // -10% to +10%
+            volume24h: Math.floor(Math.random() * 10000000),
+            liquidity: Math.floor(Math.random() * 50000000),
+            status: status,
+            sparklineData: Array.from({ length: 7 }, () => parseFloat((basePrice * (1 + (Math.random() - 0.5) * 0.2)).toFixed(2))),
+            marketCap: Math.floor(basePrice * (Math.random() * 1000000 + 100000)),
+        });
+    }
+
+    return mockTokens;
+};
+
+export const MOCK_TOKENS: Token[] = generateMockData(500);
+
+
+--------------------------------------------------
+// FILE: src/lib/utils/cn.ts
+--------------------------------------------------
+// src/lib/utils/cn.ts
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
+// Note: Ensure you have installed 'clsx' and 'tailwind-merge' (we did this in Checkpoint 1)
+
+
+--------------------------------------------------
+// FILE: src/lib/hooks/useTokenData.ts
+--------------------------------------------------
+// src/lib/hooks/useTokenData.ts
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import React from 'react';
+import { MOCK_TOKENS } from '@/lib/constants/mockTokens';
+import { startMockPriceStream } from '@/services/websocket/mockWebSocket';
+import { Token, PriceUpdate } from '@/types/token';
+
+const fetchInitialTokens = async (): Promise<Token[]> => {
+    // 🚀 PERFORMANCE FIX: Removed setTimeout(300). 
+    // Return a copy of the data to ensure immutability.
+    return [...MOCK_TOKENS];
+};
+
+export const useTokenData = () => {
+    const queryClient = useQueryClient();
+    const queryKey = ['tokens'];
+
+    const query = useQuery({
+        queryKey: queryKey,
+        queryFn: fetchInitialTokens,
+        staleTime: Infinity,
+    });
+
+    React.useEffect(() => {
+        const updateCache = (update: PriceUpdate) => {
+            queryClient.setQueryData<Token[]>(queryKey, (oldTokens) => {
+                if (!oldTokens) return [];
+
+                return oldTokens.map(token => {
+                    if (token.id === update.id) {
+                        return {
+                            ...token,
+                            currentPrice: update.newPrice,
+                        };
+                    }
+                    return token;
+                });
+            });
+        };
+
+        const cleanup = startMockPriceStream(updateCache);
+        return cleanup;
+    }, [queryClient]);
+
+    return query;
+};
+
+
+--------------------------------------------------
+// FILE: src/lib/hooks/useTableSorting.ts
+--------------------------------------------------
+// src/lib/hooks/useTableSorting.ts
+import { useMemo } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '@/store/store';
+import { setSort } from '@/store/slices/tableSlice';
+import { Token, SortField } from '@/types/token';
+
+interface UseSortResult {
+    sortedData: Token[];
+    currentSortField: SortField | null;
+    sortDirection: 'asc' | 'desc';
+    handleSort: (field: SortField) => void;
+}
+
+export const useTableSorting = (tokens: Token[]): UseSortResult => {
+    const dispatch: AppDispatch = useDispatch();
+    const { currentSortField, sortDirection } = useSelector((state: RootState) => state.table);
+
+    // Memoize the sorting logic to prevent unnecessary re-calculation on every render
+    const sortedData = useMemo(() => {
+        if (!currentSortField || tokens.length === 0) {
+            return tokens;
+        }
+
+        const sorted = [...tokens].sort((a, b) => {
+            const aValue = a[currentSortField] as number;
+            const bValue = b[currentSortField] as number;
+
+            if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        return sorted;
+    }, [tokens, currentSortField, sortDirection]); // Dependencies for re-calculation
+
+    const handleSort = (field: SortField) => {
+        let newDirection: 'asc' | 'desc' = 'asc';
+
+        if (currentSortField === field) {
+            // Toggle direction if the same field is clicked
+            newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            // Default to descending for new fields (e.g., higher volume/price first)
+            newDirection = 'desc';
+        }
+
+        dispatch(setSort({ field, direction: newDirection }));
+    };
+
+    return { sortedData, currentSortField, sortDirection, handleSort };
+};
+
+
+--------------------------------------------------
+// FILE: src/services/websocket/mockWebSocket.ts
+--------------------------------------------------
+// src/services/websocket/mockWebSocket.ts
+import { MOCK_TOKENS } from '@/lib/constants/mockTokens';
+import { PriceUpdate } from '@/types/token';
+
+// Keep a local state map for simulation so we don't mutate the constant
+const currentPrices = new Map<string, number>();
+
+// Initialize local map
+MOCK_TOKENS.forEach(t => currentPrices.set(t.id, t.currentPrice));
+
+export const startMockPriceStream = (onUpdate: (data: PriceUpdate) => void): (() => void) => {
+    console.log('Starting mock WebSocket stream...');
+    const tokenIds = MOCK_TOKENS.map(t => t.id);
+
+    const intervalId = setInterval(() => {
+        const randomId = tokenIds[Math.floor(Math.random() * tokenIds.length)];
+
+        // Get current price from our local map, not the global constant
+        const currentPrice = currentPrices.get(randomId) || 100;
+
+        // Calculate random change (+/- 1%)
+        const change = (Math.random() * 0.02 - 0.01) * currentPrice;
+        const newPrice = parseFloat((currentPrice + change).toFixed(2));
+
+        // Update our local map
+        currentPrices.set(randomId, newPrice);
+
+        const update: PriceUpdate = {
+            id: randomId,
+            newPrice: newPrice,
+        };
+
+        // Send update
+        onUpdate(update);
+    }, 200); // Speed up to 200ms for more visible action
+
+    return () => {
+        clearInterval(intervalId);
+    };
+};
+
+
+--------------------------------------------------
+// FILE: src/store/slices/tableSlice.ts
+--------------------------------------------------
+// src/store/slices/tableSlice.ts (Updated)
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { SortField, TokenStatus } from '@/types/token'; // Assuming TokenStatus is exported
+
+type FilterStatus = TokenStatus | 'All';
+
+interface TableState {
+    currentSortField: SortField | null;
+    sortDirection: 'asc' | 'desc';
+    activeTokenModalId: string | null;
+    // 💡 NEW: Filtering State
+    filterStatus: FilterStatus;
+}
+
+const initialState: TableState = {
+    currentSortField: 'marketCap',
+    sortDirection: 'desc',
+    activeTokenModalId: null,
+    // 💡 Initialize filter
+    filterStatus: 'All',
+};
+
+const tableSlice = createSlice({
+    name: 'table',
+    initialState,
+    reducers: {
+        setSort: (state, action: PayloadAction<{ field: SortField, direction: 'asc' | 'desc' }>) => {
+            state.currentSortField = action.payload.field;
+            state.sortDirection = action.payload.direction;
+        },
+        openTokenModal: (state, action: PayloadAction<string>) => {
+            state.activeTokenModalId = action.payload;
+        },
+        closeTokenModal: (state) => {
+            state.activeTokenModalId = null;
+        },
+        // 💡 NEW REDUCER: Set the active filter status
+        setFilterStatus: (state, action: PayloadAction<FilterStatus>) => {
+            state.filterStatus = action.payload;
+        },
+    },
+});
+
+export const { setSort, openTokenModal, closeTokenModal, setFilterStatus } = tableSlice.actions;
+export default tableSlice.reducer;
+
+
+--------------------------------------------------
+// FILE: src/store/store.ts
+--------------------------------------------------
+// src/store/store.ts
+import { configureStore } from '@reduxjs/toolkit';
+import tableReducer from './slices/tableSlice';
+
+export const store = configureStore({
+    reducer: {
+        table: tableReducer,
+        // Add RTK Query middleware here later if needed
+    },
+});
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+
+
+--------------------------------------------------
+// FILE: backend/src/redis-service.ts
+--------------------------------------------------
+
+
+
+--------------------------------------------------
+// FILE: backend/src/token-metadata-api.ts
+--------------------------------------------------
+
+
+
+--------------------------------------------------
+// FILE: backend/src/websocket-handler.ts
+--------------------------------------------------
+
+
+
+--------------------------------------------------
+// FILE: backend/src/server.ts
+--------------------------------------------------
+
+
+
+--------------------------------------------------
+// FILE: package.json
+--------------------------------------------------
+{
+  "name": "realtime-token-intelligence-platform",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "chromatic": "npx chromatic --project-token=YOUR_PROJECT_TOKEN"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.10.1",
+    "@tanstack/react-query": "^5.90.10",
+    "@tanstack/react-virtual": "^3.13.12",
+    "class-variance-authority": "^0.7.1",
+    "lucide-react": "^0.554.0",
+    "next": "16.0.3",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-redux": "^9.2.0",
+    "recharts": "^3.4.1",
+    "tailwind-merge": "^3.4.0"
+  },
+  "devDependencies": {
+    "@chromatic-com/storybook": "^4.1.3",
+    "@storybook/addon-a11y": "^10.0.8",
+    "@storybook/addon-docs": "^10.0.8",
+    "@storybook/addon-onboarding": "^10.0.8",
+    "@storybook/addon-vitest": "^10.0.8",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.3",
+    "eslint-plugin-storybook": "^10.0.8",
+    "storybook": "^10.0.8",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "@storybook/nextjs-vite": "^10.0.8",
+    "vitest": "^4.0.12",
+    "playwright": "^1.56.1",
+    "@vitest/browser-playwright": "^4.0.12",
+    "@vitest/coverage-v8": "^4.0.12"
+  }
+}
+
+
+--------------------------------------------------
+// FILE: tsconfig.json
+--------------------------------------------------
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
+
+
+--------------------------------------------------
+// FILE: next.config.ts
+--------------------------------------------------
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+
+
+
+--------------------------------------------------
+// FILE: postcss.config.mjs
+--------------------------------------------------
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+
+
+

@@ -1,18 +1,23 @@
-// src/store/slices/tableSlice.ts
+// src/store/slices/tableSlice.ts (Updated)
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { SortField } from '@/types/token';
+import { SortField, TokenStatus } from '@/types/token'; // Assuming TokenStatus is exported
+
+type FilterStatus = TokenStatus | 'All';
 
 interface TableState {
     currentSortField: SortField | null;
     sortDirection: 'asc' | 'desc';
     activeTokenModalId: string | null;
-    // Add filters later: filterStatus: TokenStatus[]
+    // 💡 NEW: Filtering State
+    filterStatus: FilterStatus;
 }
 
 const initialState: TableState = {
-    currentSortField: 'marketCap', // Default sort field
+    currentSortField: 'marketCap',
     sortDirection: 'desc',
     activeTokenModalId: null,
+    // 💡 Initialize filter
+    filterStatus: 'All',
 };
 
 const tableSlice = createSlice({
@@ -29,8 +34,12 @@ const tableSlice = createSlice({
         closeTokenModal: (state) => {
             state.activeTokenModalId = null;
         },
+        // 💡 NEW REDUCER: Set the active filter status
+        setFilterStatus: (state, action: PayloadAction<FilterStatus>) => {
+            state.filterStatus = action.payload;
+        },
     },
 });
 
-export const { setSort, openTokenModal, closeTokenModal } = tableSlice.actions;
+export const { setSort, openTokenModal, closeTokenModal, setFilterStatus } = tableSlice.actions;
 export default tableSlice.reducer;

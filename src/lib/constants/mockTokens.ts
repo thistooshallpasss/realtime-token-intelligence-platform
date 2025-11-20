@@ -27,5 +27,4 @@ const generateMockData = (count: number): Token[] => {
     return mockTokens;
 };
 
-// export const MOCK_TOKENS: Token[] = generateMockData(20);
-export const MOCK_TOKENS: Token[] = generateMockData(20);
+export const MOCK_TOKENS: Token[] = generateMockData(500);
